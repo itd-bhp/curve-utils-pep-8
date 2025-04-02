@@ -4,20 +4,34 @@ import com.niku.xmlserver.blob.NkCurve
 import com.niku.xmlserver.blob.NkSegment
 import de.itdesign.clarity.logging.CommonLogger
 import groovy.sql.GroovyRowResult
+import groovy.sql.Sql
 import groovy.time.TimeCategory
 import groovy.transform.Field
+import org.example.DbConnection
 
 import javax.sql.rowset.serial.SerialBlob
 import java.sql.Blob
 
 @Field CommonLogger cmnLog = new CommonLogger(this)
 
+Sql sql = DbConnection.connectDb()
+
+query = """SELECT ii.LABOR_ALLOC_CURVE FROM INV_INVESTMENTS ii 
+WHERE id = 5001123"""
+
+def curveData = sql.rows(query)
+
+println(curveData)
+Blob curveBlob = curveData[0]["LABOR_ALLOC_CURVE"] as Blob
+def s = new NkCurve(curveBlob.getBinaryStream().bytes)
+def m = s.toJson()
+//println(s)
+println("json---> ${m}")
 getCurveFromBlob = { GroovyRowResult rowResult, String curveName ->
     Blob curveBlob_SoftCurve = rowResult?.get(curveName) ? new SerialBlob(rowResult?.get(curveName) as byte[]) : null
     NkCurve Curve = curveBlob_SoftCurve ? new NkCurve(curveBlob_SoftCurve.binaryStream.bytes) : new NkCurve(1)
     Curve
 }
-
 removeFilterSegments = { NkCurve curve, start, periods ->
     NkCurve filterCurve = getFilterSegments(curve.clone(), start, periods)
     curve.segments.subSegments(filterCurve.segments)
